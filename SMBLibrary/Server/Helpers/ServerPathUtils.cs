@@ -19,7 +19,7 @@ namespace SMBLibrary.Server
         {
             if (path.StartsWith(@"\\"))
             {
-                int index = path.IndexOf('\\', 3);
+                int index = path.IndexOf('\\', 2);
                 if (index > 0)
                 {
                     return path.Substring(index);
@@ -37,7 +37,7 @@ namespace SMBLibrary.Server
         public static string GetRelativeSharePath(string path)
         {
             string relativePath = GetRelativeServerPath(path);
-            int index = relativePath.IndexOf('\\', 2);
+            int index = relativePath.IndexOf('\\', 1);
             if (index > 0)
             {
                 return path.Substring(index);
