@@ -10,18 +10,15 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using SMBLibrary.Authentication.NTLM;
 using SMBLibrary.NetBios;
-using SMBLibrary.Services;
 using SMBLibrary.SMB2;
-using Utilities;
 
 namespace SMBLibrary.Client
 {
     public class SMB2Client : ISMBClient
     {
-        public const int NetBiosOverTCPPort = 139;
-        public const int DirectTCPPort = 445;
+        public int NetBiosOverTCPPort = 139;
+        public int DirectTCPPort = 445;
 
         public const uint ClientMaxTransactSize = 65536;
         public const uint ClientMaxReadSize = 65536;
@@ -63,6 +60,55 @@ namespace SMBLibrary.Client
                 }
                 else
                 {
+                    port = NetBiosOverTCPPort;
+                }
+
+                try
+                {
+                    m_clientSocket.Connect(serverAddress, port);
+                }
+                catch (SocketException)
+                {
+                    return false;
+                }
+
+                ConnectionState state = new ConnectionState();
+                NBTConnectionReceiveBuffer buffer = state.ReceiveBuffer;
+                m_currentAsyncResult = m_clientSocket.BeginReceive(buffer.Buffer, buffer.WriteOffset, buffer.AvailableLength, SocketFlags.None, new AsyncCallback(OnClientSocketReceive), state);
+                bool supportsDialect = NegotiateDialect();
+                if (!supportsDialect)
+                {
+                    m_clientSocket.Close();
+                }
+                else
+                {
+                    m_isConnected = true;
+                }
+            }
+            return m_isConnected;
+        }
+
+        public bool Connect(IPAddress serverAddress, SMBTransportType transport, int customPort = -1)
+        {
+            m_transport = transport;
+            if (!m_isConnected)
+            {
+                m_clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                int port;
+                if (transport == SMBTransportType.DirectTCPTransport)
+                {
+                    if (customPort != -1)
+                    {
+                        DirectTCPPort = customPort;
+                    }
+                    port = DirectTCPPort;
+                }
+                else
+                {
+                    if (customPort != -1)
+                    {
+                        NetBiosOverTCPPort = customPort;
+                    }
                     port = NetBiosOverTCPPort;
                 }
 
